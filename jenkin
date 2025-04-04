@@ -1,16 +1,46 @@
-pipeline{
+pipeline {
     agent any
-        tools{
-            jdk 'JDK 21'
-            maven 'Maven'
+
+    tools {
+        jdk 'JDK 21'
+        maven 'Maven'
+    }
+
+    stages {
+        stage('Build Maven') {
+            steps {
+                checkout scmGit(
+                    branches: [[name: '*/main']],
+                    extensions: [],
+                    userRemoteConfigs: [[url: 'https://github.com/hariprasanth209/jenkin_trail.git']]
+                )
+                bat 'mvn clean install'
+            }
         }
-        stages{
-            stage('Build Maven'){
-                steps{
-                    checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/hariprasanth209/jenkin_trail.git']])
-                    bat 'mvn clean install'
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    bat 'docker build -t hariprasanthdocker/app .'
                 }
             }
-           
         }
+
+        stage('Push Image to DockerHub') {
+            steps {
+                script {
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'Docker-Hub',
+                            passwordVariable: 'DOCKER_PASSWORD',
+                            usernameVariable: 'DOCKER_USER'
+                        )
+                    ]) {
+                        bat "docker login -u %DOCKER_USER% -p %DOCKER_PASSWORD%"
+                    }
+                    bat 'docker push hariprasanthdocker/app'
+                }
+            }
+        }
+    }
 }
